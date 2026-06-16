@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAFFE.IN — 스마트 카페인 트래커 (v2.2)</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #232830;
+    --neon: #b5f23d;
+    --neon-dim: #7aab1e;
+    --amber: #f5a623;
+    --red: #ff4757;
+    --blue: #4ecdc4;
+    --text: #e8eaf0;
+    --text-muted: #6b7280;
+    --text-dim: #9ca3af;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-display); min-height: 100vh; overflow-x: hidden; }
+
+  /* NAV */
+  nav { position: sticky; top: 0; z-index: 100; background: rgba(10,12,16,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+  .nav-logo { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--neon); letter-spacing: -0.5px; }
+  .nav-logo span { color: var(--text-muted); }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.2s; border: none; background: transparent; }
+  .nav-tab:hover { color: var(--text); background: var(--surface2); }
+  .nav-tab.active { color: var(--neon); background: rgba(181,242,61,0.1); }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* DASHBOARD */
+  #dashboard { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  .dash-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 30px; gap: 16px; flex-wrap: wrap; }
+  .dash-title { font-size: 13px; font-weight: 500; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .dash-name { font-size: 32px; font-weight: 700; line-height: 1.1; }
+  .dash-name em { color: var(--neon); font-style: normal; }
+  .dash-date { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .header-badges { display: flex; gap: 12px; }
+  .profile-badge { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--text-dim); text-align: right; cursor: pointer; transition: border-color 0.2s; }
+  .profile-badge:hover { border-color: var(--neon); }
+  .profile-badge strong { color: var(--neon); font-family: var(--font-mono); font-size: 16px; display: block; }
+
+  /* BACKWARD SCHEDULING CARD */
+  .scheduler-card { background: linear-gradient(135deg, #111318 0%, #17121e 100%); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+  .sched-info { flex: 1; }
+  .sched-title { font-size: 12px; font-weight: 600; color: #a855f7; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .sched-title span { background: rgba(147, 51, 234, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+  .sched-msg { font-size: 15px; font-weight: 500; line-height: 1.5; color: var(--text); }
+  .sched-msg strong { color: var(--neon); }
+  .sched-msg em { color: var(--red); font-style: normal; font-weight: 600; }
+  .sched-ctrl { text-align: right; background: var(--surface2); padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
+  .sched-ctrl label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+  .sched-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 4px 8px; border-radius: 4px; outline: none; text-align: center; }
+  .sched-input:focus { border-color: #a855f7; }
+
+  /* GAUGE */
+  .gauge-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; margin-bottom: 24px; position: relative; overflow: hidden; }
+  .gauge-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--neon), var(--amber)); opacity: 0.6; }
+  .gauge-label { font-size: 12px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px; }
+  .gauge-numbers { display: flex; align-items: baseline; gap: 8px; margin-bottom: 24px; }
+  .gauge-current { font-family: var(--font-mono); font-size: 64px; font-weight: 700; line-height: 1; color: var(--neon); transition: color 0.5s; }
+  .gauge-current.warn { color: var(--amber); }
+  .gauge-current.danger { color: var(--red); }
+  .gauge-unit { font-size: 20px; color: var(--text-muted); }
+  .gauge-max { font-size: 14px; color: var(--text-muted); margin-left: auto; font-family: var(--font-mono); }
+  .gauge-bar-wrap { position: relative; height: 12px; background: var(--surface2); border-radius: 6px; margin-bottom: 12px; }
+  .gauge-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--neon), var(--amber)); transition: width 0.6s cubic-bezier(0.25,0.46,0.45,0.94); position: relative; max-width: 100%; }
+  .gauge-bar-fill.warn { background: linear-gradient(90deg, var(--amber), #ff6b35); }
+  .gauge-bar-fill.danger { background: linear-gradient(90deg, #ff6b35, var(--red)); }
+  .gauge-bar-fill::after { content: ''; position: absolute; right: -1px; top: -4px; width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 0 12px rgba(181,242,61,0.8); }
+  .gauge-bar-fill.warn::after { box-shadow: 0 0 12px rgba(245,166,35,0.8); }
+  .gauge-bar-fill.danger::after { box-shadow: 0 0 12px rgba(255,71,87,0.8); }
+  .gauge-zones { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 20px; font-family: var(--font-mono); }
+  .gauge-status { background: var(--surface2); border-radius: 8px; padding: 12px 16px; font-size: 14px; line-height: 1.5; border-left: 3px solid var(--neon); }
+  .gauge-status.warn { border-color: var(--amber); }
+  .gauge-status.danger { border-color: var(--red); }
+  .gauge-status strong { color: var(--neon); }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-family: var(--font-mono); font-size: 24px; font-weight: 700; color: var(--text); }
+  .stat-value em { font-size: 14px; font-style: normal; color: var(--text-muted); }
+  .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* LOG */
+  .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .log-title { font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+  .btn-clear { font-size: 12px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .btn-clear:hover { color: var(--red); border-color: var(--red); }
+  .log-empty { font-size: 14px; color: var(--text-muted); text-align: center; padding: 24px 0; }
+  .log-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .log-item { display: flex; align-items: center; gap: 12px; background: var(--surface2); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+  .log-item-icon { font-size: 18px; }
+  .log-item-name { flex: 1; font-weight: 500; }
+  .log-item-size { font-size: 11px; padding: 1px 5px; background: var(--border); border-radius: 4px; color: var(--text-dim); font-family: var(--font-mono); }
+  .log-item-mg { font-family: var(--font-mono); font-size: 13px; color: var(--neon); font-weight: 700; }
+  .log-item-time { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+  .log-item-del { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; }
+  .log-item-del:hover { color: var(--red); }
+
+  /* TRACKER */
+  #tracker { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  .tracker-header { margin-bottom: 32px; }
+  .section-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--neon); margin-bottom: 8px; }
+  .section-title { font-size: 28px; font-weight: 700; }
+  .section-sub { font-size: 14px; color: var(--text-muted); margin-top: 6px; }
+  .brand-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .brand-tab { padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-muted); }
+  .brand-tab:hover { border-color: var(--neon); color: var(--neon); }
+  .brand-tab.active { background: rgba(181,242,61,0.12); border-color: var(--neon); color: var(--neon); }
+  .drink-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .drink-btn { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 12px; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 6px; transition: all 0.2s; }
+  .drink-btn:hover { border-color: var(--neon); transform: translateY(-2px); }
+  .drink-icon { font-size: 24px; }
+  .drink-name { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .drink-brand { font-size: 11px; color: var(--text-muted); }
+  .drink-mg { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--neon); margin-top: auto; }
+  .drink-btn.high-caf { border-color: rgba(245,166,35,0.3); }
+  .drink-btn.high-caf .drink-mg { color: var(--amber); }
+
+  .custom-input-row { display: flex; gap: 12px; align-items: flex-end; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; flex-wrap: wrap; }
+  .input-group { flex: 1; min-width: 150px; }
+  .input-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .input-field { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-family: var(--font-display); font-size: 14px; outline: none; }
+  .input-field:focus { border-color: var(--neon); }
+  .btn-add { background: var(--neon); color: var(--bg); border: none; border-radius: 8px; padding: 10px 20px; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap; font-family: var(--font-display); height: 42px; }
+
+  /* ECO-WAKEUP */
+  #eco { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  .filter-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 32px; }
+  .filter-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+  .filter-row { display: flex; gap: 32px; flex-wrap: wrap; }
+  .filter-group { flex: 1; min-width: 200px; }
+  .filter-label { font-size: 12px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .filter-options { display: flex; flex-wrap: wrap; gap: 8px; }
+  .filter-opt { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface2); color: var(--text-muted); }
+  .filter-opt:hover { border-color: var(--blue); color: var(--blue); }
+  .filter-opt.selected { background: rgba(78,205,196,0.12); border-color: var(--blue); color: var(--blue); }
+  .eco-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .eco-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; padding: 24px; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+  .eco-card-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--blue); }
+  .eco-card-icon { font-size: 32px; margin-bottom: 12px; }
+  .eco-card-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .eco-card-desc { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 16px; flex: 1; }
+  
+  /* ECO TIMER COMPONENT */
+  .eco-timer-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .eco-time-display { font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--blue); }
+  .btn-eco-timer { background: var(--blue); color: var(--bg); border: none; border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font-display); }
+  .btn-eco-timer.running { background: var(--red); color: white; }
+
+  .eco-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .eco-tag { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(78,205,196,0.1); color: var(--blue); font-family: var(--font-mono); }
+  .eco-tag.amber { background: rgba(245,166,35,0.1); color: var(--amber); }
+  .eco-tag.green { background: rgba(181,242,61,0.1); color: var(--neon-dim); }
+  .eco-placeholder { text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: 16px; width: 100%; }
+  .eco-placeholder-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* INSIGHT */
+  #insight { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .insight-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; position: relative; }
+  .insight-card-title { font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px; }
+  
+  /* WEEKLY GRAPH SVG STYLE */
+  .graph-container { width: 100%; height: 160px; margin-top: 10px; position: relative; display: flex; align-items: center; justify-content: center; }
+  .graph-svg { width: 100%; height: 100%; overflow: visible; }
+  .graph-line { fill: none; stroke: var(--neon); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .graph-dots { fill: var(--bg); stroke: var(--neon); stroke-width: 3; }
+  .graph-axis { stroke: var(--border); stroke-width: 1; }
+  .graph-labels { display: flex; justify-content: space-between; margin-top: 8px; padding: 0 5px; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+  
+  /* BRAND RANK STYLING */
+  .rank-item { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 14px; }
+  .rank-num { font-family: var(--font-mono); font-weight: 700; color: var(--neon); width: 24px; }
+  .rank-name { width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .rank-bar { height: 100%; background: var(--neon); border-radius: 3px; }
+  .rank-pct { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); width: 35px; text-align: right; }
+
+  /* SIDE EFFECT SYMPTOM BARS */
+  .effect-item { margin-bottom: 16px; }
+  .effect-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .effect-name { color: var(--text-dim); }
+  .effect-pct-txt { font-family: var(--font-mono); font-weight: 600; }
+  .effect-bar-wrap { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .effect-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+  /* MODALS */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; width: 100%; max-width: 420px; position: relative; }
+  .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+  .modal-fields { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+  .modal-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .modal-note { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .btn-save { width: 100%; background: var(--neon); color: var(--bg); border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: var(--font-display); }
+  
+  /* SIZE SELECT OPTIONS */
+  .size-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+  /* DATETIME PICKER COMPONENT */
+  .dt-picker { display: flex; flex-direction: column; gap: 8px; }
+  .dt-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dt-date-input { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 10px; color: var(--text); font-family: var(--font-mono); font-size: 13px; outline: none; flex: 1; min-width: 130px; }
+  .dt-date-input:focus { border-color: var(--neon); }
+  .dt-time-row { display: flex; gap: 6px; align-items: center; }
+  .dt-select { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 8px; color: var(--text); font-family: var(--font-mono); font-size: 14px; outline: none; text-align: center; }
+  .dt-select:focus { border-color: var(--neon); }
+  .dt-colon { color: var(--text-muted); font-family: var(--font-mono); font-weight: 700; }
+  .dt-ampm-toggle { display: flex; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .dt-ampm-btn { background: var(--surface2); border: none; color: var(--text-muted); font-family: var(--font-display); font-size: 13px; font-weight: 600; padding: 9px 12px; cursor: pointer; transition: all 0.15s; }
+  .dt-ampm-btn.active { background: var(--neon); color: var(--bg); }
+  .dt-error { font-size: 12px; color: var(--red); display: none; margin-top: 2px; }
+  .dt-error.show { display: block; }
+  .dt-now-btn { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); font-size: 11px; padding: 6px 10px; cursor: pointer; font-family: var(--font-display); white-space: nowrap; }
+  .dt-now-btn:hover { border-color: var(--neon); color: var(--neon); }
+  .size-opt-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: left; cursor: pointer; color: var(--text); display: flex; flex-direction: column; gap: 4px; }
+  .size-opt-btn:hover { border-color: var(--neon); background: rgba(181,242,61,0.05); }
+  .size-opt-title { font-weight: 700; font-size: 14px; }
+  .size-opt-sub { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+  .size-opt-mg { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--neon); margin-top: 4px; }
+
+  .sensitivity-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sens-opt input { display: none; }
+  .sens-opt label { display: block; padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface2); color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .sens-opt input:checked + label { background: rgba(181,242,61,0.12); border-color: var(--neon); color: var(--neon); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--neon); border-radius: 10px; padding: 14px 20px; font-size: 14px; font-weight: 500; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 300; opacity: 0; transform: translateY(16px); transition: all 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast-icon { margin-right: 8px; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 640px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .insight-grid { grid-template-columns: 1fr; }
+    .gauge-current { font-size: 48px; }
+    nav { padding: 0 12px; }
+    .nav-logo { font-size: 15px; }
+    .nav-tab { padding: 6px 10px; font-size: 12px; }
+    .scheduler-card { flex-direction: column; align-items: stretch; }
+    .sched-ctrl { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">CAFFE<span>.</span>IN</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('dashboard', event)">Dashboard</button>
+    <button class="nav-tab" onclick="showTab('tracker', event)">Tracker</button>
+    <button class="nav-tab" onclick="showTab('eco', event)">Eco-Wakeup</button>
+    <button class="nav-tab" onclick="showTab('insight', event)">Insight</button>
+  </div>
+</nav>
+
+<!-- ===== DASHBOARD ===== -->
+<section id="dashboard" class="section active">
+  <div class="dash-header">
+    <div>
+      <div class="dash-title">오늘의 카페인 현황</div>
+      <div class="dash-name">나의 <em id="d-status-word">안전</em> 구간</div>
+      <div class="dash-date" id="d-date"></div>
+    </div>
+    <div class="header-badges">
+      <div class="profile-badge" onclick="openModal('profile')">
+        <div style="font-size:11px;margin-bottom:2px;">내 일일 한도</div>
+        <strong id="d-limit-badge">400mg</strong>
+        <div style="font-size:11px;margin-top:2px;color:var(--text-muted)">설정 변경 ↗</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Industrial Engineering: Backward Scheduling Sleep Card -->
+  <div class="scheduler-card">
+    <div class="sched-info">
+      <div class="sched-title">💤 취침 스케줄러 <span>Backward Scheduling 기법</span></div>
+      <div class="sched-msg" id="sched-msg">목표 취침 시간을 설정하면 실시간 역산 분석 결과가 여기에 표시됩니다.</div>
+    </div>
+    <div class="sched-ctrl">
+      <label for="sched-sleep-time">목표 취침 시간</label>
+      <input type="time" id="sched-sleep-time" class="sched-input" value="23:00" onchange="updateScheduler()">
+    </div>
+  </div>
+
+  <div class="gauge-card">
+    <div class="gauge-label">Caffeine Level</div>
+    <div class="gauge-numbers">
+      <span class="gauge-current" id="d-current">0</span>
+      <span class="gauge-unit">mg</span>
+      <span class="gauge-max" id="d-max">/ 400mg</span>
+    </div>
+    <div class="gauge-bar-wrap">
+      <div class="gauge-bar-fill" id="d-bar" style="width:0%"></div>
+    </div>
+    <div class="gauge-zones">
+      <span>0</span><span>50%</span><span>75%</span><span>100%</span>
+    </div>
+    <div class="gauge-status" id="d-status-msg">
+      오늘 카페인을 아직 섭취하지 않았어요. <strong>Tracker</strong>에서 음료를 추가해보세요!
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">오늘 마신 음료</div>
+      <div class="stat-value" id="d-count">0 <em>잔</em></div>
+      <div class="stat-sub">당일 누적 기록</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">남은 허용량</div>
+      <div class="stat-value" id="d-remain">400 <em>mg</em></div>
+      <div class="stat-sub" id="d-remain-sub">아메리카노 약 2잔</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">카페인 대사 현황</div>
+      <div class="stat-value" id="d-halflife">—</div>
+      <div class="stat-sub">현재 체내 잔여 추정치</div>
+    </div>
+  </div>
+
+  <div class="log-card">
+    <div class="log-header">
+      <div class="log-title">오늘 섭취 기록</div>
+      <button class="btn-clear" onclick="clearLog()">전체 삭제</button>
+    </div>
+    <ul class="log-list" id="d-log-list">
+      <li class="log-empty" id="d-log-empty">아직 기록이 없어요 ☕</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== TRACKER ===== -->
+<section id="tracker" class="section">
+  <div class="tracker-header">
+    <div class="section-eyebrow">Caffeine Tracker</div>
+    <div class="section-title">오늘 뭐 마셨어?</div>
+    <div class="section-sub">음료를 선택하면 정밀한 용량 및 <b>섭취 완료 시간</b>을 제어하는 모달 윈도우가 활성화됩니다.</div>
+  </div>
+
+  <div class="brand-tabs" id="brand-tabs">
+    <button class="brand-tab active" onclick="filterBrand('all', this)">전체</button>
+    <button class="brand-tab" onclick="filterBrand('starbucks', this)">스타벅스</button>
+    <button class="brand-tab" onclick="filterBrand('megacoffee', this)">메가커피</button>
+    <button class="brand-tab" onclick="filterBrand('compose', this)">컴포즈</button>
+    <button class="brand-tab" onclick="filterBrand('ediya', this)">이디야</button>
+    <button class="brand-tab" onclick="filterBrand('twosome', this)">투썸</button>
+    <button class="brand-tab" onclick="filterBrand('paik', this)">빽다방</button>
+    <button class="brand-tab" onclick="filterBrand('hollys', this)">할리스</button>
+    <button class="brand-tab" onclick="filterBrand('paulbassett', this)">폴바셋</button>
+    <button class="brand-tab" onclick="filterBrand('energy', this)">에너지드링크</button>
+    <button class="brand-tab" onclick="filterBrand('convenience', this)">편의점</button>
+    <button class="brand-tab" onclick="filterBrand('tea', this)">차/기타</button>
+  </div>
+
+  <div class="drink-grid" id="drink-grid"></div>
+
+  <div class="custom-input-row" style="align-items:flex-start;">
+    <div class="input-group">
+      <div class="input-label">음료 이름</div>
+      <input class="input-field" id="custom-name" type="text" placeholder="예: 홈카페 콜드브루">
+    </div>
+    <div class="input-group" style="max-width:110px;">
+      <div class="input-label">카페인 (mg)</div>
+      <input class="input-field" id="custom-mg" type="number" placeholder="150">
+    </div>
+    <div class="input-group" style="min-width:260px;">
+      <div class="input-label">⏱️ 마신 날짜·시간</div>
+      <div class="dt-picker" id="custom-dt-picker"></div>
+      <div class="dt-error" id="custom-dt-error">⚠️ 선택한 날짜의 현재 시각보다 미래는 입력할 수 없어요.</div>
+    </div>
+    <button class="btn-add" onclick="addCustom()" style="margin-top:22px;">+ 직접 추가</button>
+  </div>
+</section>
+
+<!-- ===== ECO-WAKEUP ===== -->
+<section id="eco" class="section">
+  <div class="tracker-header">
+    <div class="section-eyebrow">Eco-Wakeup</div>
+    <div class="section-title">카페인 없이 잠 깨는 법</div>
+    <div class="section-sub">상황을 선택하고 추천 솔루션 내의 실시간 인터랙티브 타이머로 즉시 행동을 실행해 보세요.</div>
+  </div>
+
+  <div class="filter-card">
+    <div class="filter-title">⚙️ 현재 상황 필터링</div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <div class="filter-label">현재 장소</div>
+        <div class="filter-options">
+          <div class="filter-opt" onclick="setFilter('place', 'classroom', this)">🏫 강의실</div>
+          <div class="filter-opt" onclick="setFilter('place', 'library', this)">📚 도서관</div>
+          <div class="filter-opt" onclick="setFilter('place', 'home', this)">🏠 집</div>
+          <div class="filter-opt" onclick="setFilter('place', 'cafe', this)">☕ 카페</div>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">남은 집중 시간</div>
+        <div class="filter-options">
+          <div class="filter-opt" onclick="setFilter('time', '30min', this)">⚡ 30분 이내</div>
+          <div class="filter-opt" onclick="setFilter('time', '1hour', this)">🕐 1~2시간</div>
+          <div class="filter-opt" onclick="setFilter('time', 'long', this)">🔥 2시간 이상</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="eco-results">
+    <div class="eco-result-header" id="eco-header">추천 결과</div>
+    <div id="eco-content">
+      <div class="eco-placeholder">
+        <div class="eco-placeholder-icon">🎯</div>
+        <p>장소와 시간을 선택하시면<br>행동 제어가 가능한 맞춤형 솔루션이 연동됩니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INSIGHT ===== -->
+<section id="insight" class="section">
+  <div class="tracker-header">
+    <div class="section-eyebrow">Insight</div>
+    <div class="section-title">나의 데이터 기반 의사결정</div>
+    <div class="section-sub">실제 축적된 LocalStorage 데이터만을 바탕으로 정밀한 소비 인사이트를 도출합니다.</div>
+  </div>
+
+  <div class="insight-grid">
+    <!-- REAL DATA WEEKLY CHART (CONDITIONAL RENDER) -->
+    <div class="insight-card" style="grid-column: 1 / -1;">
+      <div class="insight-card-title">📈 지난 7일간의 실시간 카페인 섭취 추이</div>
+      <div class="graph-container" id="graph-view-container">
+        <svg class="graph-svg" id="weekly-graph-svg" viewBox="0 0 700 160" preserveAspectRatio="none">
+          <!-- Graph generated dynamically -->
+        </svg>
+      </div>
+      <div class="graph-labels" id="graph-labels-row">
+        <!-- Labels generated dynamically -->
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-card-title">🏆 선호 카테고리 TOP 3</div>
+      <div class="rank-list" id="insight-top-brands">
+        <div class="log-empty" style="font-size:12px;">데이터가 없습니다.</div>
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-card-title">⚠️ 주요 부작용 위험 시뮬레이션</div>
+      <div class="effect-list">
+        <div class="effect-item">
+          <div class="effect-label"><span class="effect-name">수면 대사 교란도</span><span class="effect-pct-txt" id="eff-sleep">0%</span></div>
+          <div class="effect-bar-wrap"><div class="effect-bar" id="eff-bar-sleep" style="width:0%;background:var(--red)"></div></div>
+        </div>
+        <div class="effect-item">
+          <div class="effect-label"><span class="effect-name">가슴 두근거림 가능성</span><span class="effect-pct-txt" id="eff-heart">0%</span></div>
+          <div class="effect-bar-wrap"><div class="effect-bar" id="eff-bar-heart" style="width:0%;background:var(--amber)"></div></div>
+        </div>
+        <div class="effect-item">
+          <div class="effect-label"><span class="effect-name">신경과민 및 의존도</span><span class="effect-pct-txt" id="eff-anxious">0%</span></div>
+          <div class="effect-bar-wrap"><div class="effect-bar" id="eff-bar-anxious" style="width:0%;background:var(--blue)"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROFILE MODAL -->
+<div class="modal-backdrop" id="profile-modal" onclick="closeModal(event, 'profile')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal(null, 'profile')">✕</button>
+    <div class="modal-title">내 신체 프로파일</div>
+    <div class="modal-sub">인간공학 기반 맞춤 권장량 계산을 위해 입력해주세요.</div>
+    <div class="modal-fields">
+      <div>
+        <div class="modal-label">몸무게 (kg)</div>
+        <input class="input-field" id="m-weight" type="number" placeholder="예: 65" min="30" max="150">
+        <div class="modal-note">기준: 체중 1kg당 카페인 5.7mg (FDA 가이드라인)</div>
+      </div>
+      <div>
+        <div class="modal-label">카페인 민감도</div>
+        <div class="sensitivity-opts">
+          <div class="sens-opt"><input type="radio" name="sens" id="s1" value="low"><label for="s1">낮음 🦁</label></div>
+          <div class="sens-opt"><input type="radio" name="sens" id="s2" value="mid" checked><label for="s2">보통 🐻</label></div>
+          <div class="sens-opt"><input type="radio" name="sens" id="s3" value="high"><label for="s3">높음 🐭</label></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveProfile()">💾 프로파일 저장하기</button>
+  </div>
+</div>
+
+<!-- DYNAMIC SIZE SELECTION MODAL (WITH TIME INPUT) -->
+<div class="modal-backdrop" id="size-modal" onclick="closeModal(event, 'size')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal(null, 'size')">✕</button>
+    <div class="modal-title" id="size-m-title">음료 사이즈 선택</div>
+    <div class="modal-sub">서빙 규격에 부합하는 계수를 할당하며, <b>과거 섭취 시각 보정</b>이 가능합니다.</div>
+    
+    <div style="margin-bottom: 16px; background: var(--surface2); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+      <div class="modal-label" style="margin-bottom: 6px; color: var(--neon);">⏱️ 섭취 완료 날짜·시각 보정</div>
+      <div class="dt-picker" id="modal-dt-picker"></div>
+      <div class="dt-error" id="modal-dt-error">⚠️ 선택한 날짜의 현재 시각보다 미래는 입력할 수 없어요.</div>
+      <div class="modal-note">사후 기록 시 실제 마신 날짜·시간으로 변경하면 대사가 정밀 역산됩니다.</div>
+    </div>
+
+    <div class="size-grid" id="size-options-container">
+      <!-- Options rendered dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span class="toast-icon" id="toast-icon">✓</span><span id="toast-msg"></span></div>
+
+<script>
+// ============ DATA ============
+const DRINKS = [
+  // ── 스타벅스 ──
+  { id:1,  name:'아메리카노',        brand:'starbucks',   brandLabel:'스타벅스',    icon:'☕', sizes:[{name:'Tall',   mg:150, vol:'355ml'},{name:'Grande', mg:225, vol:'473ml'},{name:'Venti',  mg:300, vol:'591ml'}] },
+  { id:2,  name:'콜드브루',          brand:'starbucks',   brandLabel:'스타벅스',    icon:'🧊', sizes:[{name:'Tall',   mg:155, vol:'355ml'},{name:'Grande', mg:235, vol:'473ml'},{name:'Venti',  mg:310, vol:'591ml'}] },
+  { id:3,  name:'나이트로 콜드브루', brand:'starbucks',   brandLabel:'스타벅스',    icon:'🌙', sizes:[{name:'Tall',   mg:215, vol:'355ml'},{name:'Grande', mg:280, vol:'473ml'}] },
+  { id:4,  name:'카페라떼',          brand:'starbucks',   brandLabel:'스타벅스',    icon:'🥛', sizes:[{name:'Tall',   mg:75,  vol:'355ml'},{name:'Grande', mg:150, vol:'473ml'},{name:'Venti',  mg:150, vol:'591ml'}] },
+  { id:5,  name:'카푸치노',          brand:'starbucks',   brandLabel:'스타벅스',    icon:'☁️', sizes:[{name:'Tall',   mg:75,  vol:'355ml'},{name:'Grande', mg:150, vol:'473ml'}] },
+  { id:6,  name:'카라멜 마키아또',   brand:'starbucks',   brandLabel:'스타벅스',    icon:'🍮', sizes:[{name:'Tall',   mg:75,  vol:'355ml'},{name:'Grande', mg:150, vol:'473ml'},{name:'Venti',  mg:150, vol:'591ml'}] },
+  { id:7,  name:'에스프레소',        brand:'starbucks',   brandLabel:'스타벅스',    icon:'⚡', sizes:[{name:'Solo',   mg:75,  vol:'30ml'}, {name:'Doppio', mg:150, vol:'60ml'}] },
+  { id:8,  name:'말차라떼',          brand:'starbucks',   brandLabel:'스타벅스',    icon:'🍵', sizes:[{name:'Tall',   mg:55,  vol:'355ml'},{name:'Grande', mg:80,  vol:'473ml'},{name:'Venti',  mg:110, vol:'591ml'}] },
+  { id:56, name:'바닐라크림 콜드브루', brand:'starbucks', brandLabel:'스타벅스',    icon:'🍦', sizes:[{name:'Tall', mg:155, vol:'355ml'},{name:'Grande', mg:235, vol:'473ml'}] },
+  { id:57, name:'돌체라떼',          brand:'starbucks',   brandLabel:'스타벅스',    icon:'🍯', sizes:[{name:'Tall', mg:75,  vol:'355ml'},{name:'Grande', mg:150, vol:'473ml'}] },
+  { id:58, name:'아이스티(블랙)',    brand:'starbucks',   brandLabel:'스타벅스',    icon:'🧉', sizes:[{name:'Tall', mg:25,  vol:'355ml'},{name:'Grande', mg:35,  vol:'473ml'}] },
+
+  // ── 메가커피 ──
+  { id:9,  name:'아메리카노',        brand:'megacoffee',  brandLabel:'메가커피',    icon:'☕', sizes:[{name:'기본(M)', mg:185, vol:'680ml'},{name:'메가(XL)', mg:370, vol:'1L'}] },
+  { id:10, name:'콜드브루',          brand:'megacoffee',  brandLabel:'메가커피',    icon:'🧊', sizes:[{name:'기본(M)', mg:300, vol:'680ml'},{name:'메가(XL)', mg:600, vol:'1L'}] },
+  { id:11, name:'카페라떼',          brand:'megacoffee',  brandLabel:'메가커피',    icon:'🥛', sizes:[{name:'기본(M)', mg:185, vol:'680ml'},{name:'메가(XL)', mg:370, vol:'1L'}] },
+  { id:12, name:'바닐라라떼',        brand:'megacoffee',  brandLabel:'메가커피',    icon:'🌼', sizes:[{name:'기본(M)', mg:185, vol:'680ml'},{name:'메가(XL)', mg:370, vol:'1L'}] },
+  { id:13, name:'달고나라떼',        brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍯', sizes:[{name:'기본(M)', mg:185, vol:'680ml'}] },
+  { id:14, name:'흑당버블라떼',      brand:'megacoffee',  brandLabel:'메가커피',    icon:'🧋', sizes:[{name:'기본(M)', mg:185, vol:'680ml'}] },
+  { id:15, name:'아인슈페너',        brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍦', sizes:[{name:'기본(M)', mg:185, vol:'680ml'}] },
+  { id:59, name:'복숭아 아이스티',   brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍑', sizes:[{name:'기본(M)', mg:0,   vol:'680ml'}] },
+  { id:60, name:'민트초코라떼',      brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍃', sizes:[{name:'기본(M)', mg:185, vol:'680ml'}] },
+
+  // ── 컴포즈커피 ──
+  { id:16, name:'아메리카노',        brand:'compose',     brandLabel:'컴포즈',      icon:'☕', sizes:[{name:'기본(L)', mg:210, vol:'591ml'}] },
+  { id:17, name:'콜드브루',          brand:'compose',     brandLabel:'컴포즈',      icon:'🧊', sizes:[{name:'기본(L)', mg:210, vol:'591ml'}] },
+  { id:18, name:'카페라떼',          brand:'compose',     brandLabel:'컴포즈',      icon:'🥛', sizes:[{name:'기본(L)', mg:210, vol:'591ml'}] },
+  { id:19, name:'연유라떼',          brand:'compose',     brandLabel:'컴포즈',      icon:'🍶', sizes:[{name:'기본(L)', mg:175, vol:'591ml'}] },
+  { id:20, name:'초코라떼',          brand:'compose',     brandLabel:'컴포즈',      icon:'🍫', sizes:[{name:'기본(L)', mg:175, vol:'591ml'}] },
+  { id:21, name:'흑당버블티',        brand:'compose',     brandLabel:'컴포즈',      icon:'🧋', sizes:[{name:'기본(L)', mg:50,  vol:'591ml'}] },
+  { id:61, name:'자몽에이드',        brand:'compose',     brandLabel:'컴포즈',      icon:'🍊', sizes:[{name:'기본(L)', mg:0,   vol:'591ml'}] },
+
+  // ── 이디야 ──
+  { id:22, name:'아메리카노',        brand:'ediya',       brandLabel:'이디야',      icon:'☕', sizes:[{name:'기본(L)', mg:150, vol:'591ml'}] },
+  { id:23, name:'콜드브루',          brand:'ediya',       brandLabel:'이디야',      icon:'🧊', sizes:[{name:'기본(L)', mg:225, vol:'591ml'}] },
+  { id:24, name:'카페라떼',          brand:'ediya',       brandLabel:'이디야',      icon:'🥛', sizes:[{name:'기본(L)', mg:150, vol:'591ml'}] },
+  { id:25, name:'블렌디드 커피',     brand:'ediya',       brandLabel:'이디야',      icon:'🌀', sizes:[{name:'기본(L)', mg:90,  vol:'591ml'}] },
+  { id:62, name:'카라멜마키아토',    brand:'ediya',       brandLabel:'이디야',      icon:'🍮', sizes:[{name:'기본(L)', mg:150, vol:'591ml'}] },
+
+  // ── 투썸플레이스 ──
+  { id:26, name:'아메리카노',        brand:'twosome',     brandLabel:'투썸',        icon:'☕', sizes:[{name:'R', mg:135, vol:'355ml'},{name:'L', mg:200, vol:'473ml'}] },
+  { id:27, name:'콜드브루',          brand:'twosome',     brandLabel:'투썸',        icon:'🧊', sizes:[{name:'R', mg:200, vol:'355ml'},{name:'L', mg:270, vol:'473ml'}] },
+  { id:28, name:'카페라떼',          brand:'twosome',     brandLabel:'투썸',        icon:'🥛', sizes:[{name:'R', mg:100, vol:'355ml'},{name:'L', mg:165, vol:'473ml'}] },
+  { id:63, name:'스모크커스타드',    brand:'twosome',     brandLabel:'투썸',        icon:'🍮', sizes:[{name:'R', mg:100, vol:'355ml'}] },
+
+  // ── 빽다방 ──
+  { id:29, name:'아메리카노(HOT)',   brand:'paik',        brandLabel:'빽다방',      icon:'☕', sizes:[{name:'기본',   mg:220, vol:'480ml'}] },
+  { id:30, name:'앗!메리카노(ICE)',  brand:'paik',        brandLabel:'빽다방',      icon:'🧊', sizes:[{name:'기본',   mg:245, vol:'700ml'}] },
+  { id:31, name:'빽사이즈 아메리카노', brand:'paik',      brandLabel:'빽다방',      icon:'🪣', sizes:[{name:'빽사이즈', mg:560, vol:'1.2L'}] },
+  { id:32, name:'원조커피(달달)',    brand:'paik',        brandLabel:'빽다방',      icon:'🍯', sizes:[{name:'기본',   mg:196, vol:'700ml'}] },
+  { id:64, name:'빽다방 라떼',       brand:'paik',        brandLabel:'빽다방',      icon:'🥛', sizes:[{name:'기본',   mg:150, vol:'480ml'}] },
+
+  // ── 할리스 ──
+  { id:33, name:'아메리카노',        brand:'hollys',      brandLabel:'할리스',      icon:'☕', sizes:[{name:'R', mg:125, vol:'355ml'},{name:'L', mg:185, vol:'473ml'}] },
+  { id:34, name:'콜드브루',          brand:'hollys',      brandLabel:'할리스',      icon:'🧊', sizes:[{name:'R', mg:180, vol:'355ml'},{name:'L', mg:250, vol:'473ml'}] },
+  { id:65, name:'카페라떼',          brand:'hollys',      brandLabel:'할리스',      icon:'🥛', sizes:[{name:'R', mg:75,  vol:'355ml'},{name:'L', mg:125, vol:'473ml'}] },
+
+  // ── 폴바셋 ──
+  { id:66, name:'아메리카노',        brand:'paulbassett', brandLabel:'폴바셋',      icon:'☕', sizes:[{name:'S', mg:150, vol:'237ml'},{name:'R', mg:225, vol:'355ml'}] },
+  { id:67, name:'바닐라빈라떼',      brand:'paulbassett', brandLabel:'폴바셋',      icon:'🍦', sizes:[{name:'S', mg:75,  vol:'237ml'},{name:'R', mg:150, vol:'355ml'}] },
+  { id:68, name:'더블에스프레소',    brand:'paulbassett', brandLabel:'폴바셋',      icon:'⚡', sizes:[{name:'기본', mg:150, vol:'60ml'}] },
+
+  // ── 에너지드링크 ──
+  { id:35, name:'몬스터 오리지널',   brand:'energy',      brandLabel:'에너지드링크',icon:'👾', sizes:[{name:'355ml', mg:160, vol:'355ml'},{name:'500ml', mg:225, vol:'500ml'}] },
+  { id:36, name:'몬스터 울트라',     brand:'energy',      brandLabel:'에너지드링크',icon:'🤍', sizes:[{name:'355ml', mg:150, vol:'355ml'},{name:'500ml', mg:210, vol:'500ml'}] },
+  { id:37, name:'핫식스 오리지널',   brand:'energy',      brandLabel:'에너지드링크',icon:'🔥', sizes:[{name:'250ml', mg:60,  vol:'250ml'},{name:'355ml', mg:85,  vol:'355ml'}] },
+  { id:38, name:'레드불',            brand:'energy',      brandLabel:'에너지드링크',icon:'🐂', sizes:[{name:'250ml', mg:80,  vol:'250ml'},{name:'355ml', mg:114, vol:'355ml'}] },
+  { id:39, name:'번 에너지드링크',   brand:'energy',      brandLabel:'에너지드링크',icon:'💥', sizes:[{name:'250ml', mg:80,  vol:'250ml'},{name:'500ml', mg:160, vol:'500ml'}] },
+  { id:40, name:'락스타 에너지',     brand:'energy',      brandLabel:'에너지드링크',icon:'⭐', sizes:[{name:'473ml', mg:160, vol:'473ml'}] },
+  { id:41, name:'셀시우스',          brand:'energy',      brandLabel:'에너지드링크',icon:'❄️', sizes:[{name:'355ml', mg:200, vol:'355ml'}] },
+  { id:69, name:'몬스터 망고로코',   brand:'energy',      brandLabel:'에너지드링크',icon:'🥭', sizes:[{name:'355ml', mg:160, vol:'355ml'}] },
+  { id:70, name:'몬스터 파이프라인 펀치', brand:'energy', brandLabel:'에너지드링크',icon:'🍍', sizes:[{name:'355ml', mg:160, vol:'355ml'}] },
+  { id:71, name:'XL 에너지드링크',   brand:'energy',      brandLabel:'에너지드링크',icon:'🟡', sizes:[{name:'250ml', mg:80,  vol:'250ml'}] },
+  { id:72, name:'núo 에너지',        brand:'energy',      brandLabel:'에너지드링크',icon:'🟣', sizes:[{name:'250ml', mg:80,  vol:'250ml'}] },
+  { id:73, name:'타우린 강화 비타민드링크', brand:'energy', brandLabel:'에너지드링크',icon:'🧪', sizes:[{name:'250ml', mg:50, vol:'250ml'}] },
+
+  // ── 편의점 ──
+  { id:42, name:'칸타타 콘트라베이스',brand:'convenience', brandLabel:'편의점',     icon:'🎵', sizes:[{name:'275ml', mg:186, vol:'275ml'},{name:'500ml', mg:338, vol:'500ml'}] },
+  { id:43, name:'조지아 오리지널',   brand:'convenience', brandLabel:'편의점',     icon:'🥫', sizes:[{name:'240ml', mg:74,  vol:'240ml'},{name:'500ml', mg:155, vol:'500ml'}] },
+  { id:44, name:'레쓰비 카페라떼',   brand:'convenience', brandLabel:'편의점',     icon:'🥛', sizes:[{name:'240ml', mg:74,  vol:'240ml'}] },
+  { id:45, name:'스타벅스 병음료',   brand:'convenience', brandLabel:'편의점',     icon:'⭐', sizes:[{name:'더블샷 아메리카노', mg:150, vol:'200ml'},{name:'콜드브루', mg:195, vol:'270ml'}] },
+  { id:46, name:'박카스F',           brand:'convenience', brandLabel:'편의점',     icon:'💊', sizes:[{name:'병(120ml)', mg:30, vol:'120ml'},{name:'캔(250ml)', mg:30, vol:'250ml'}] },
+  { id:47, name:'비타500',           brand:'convenience', brandLabel:'편의점',     icon:'🍋', sizes:[{name:'100ml', mg:0,  vol:'100ml'}] },
+  { id:48, name:'동서 맥심 TOP',     brand:'convenience', brandLabel:'편의점',     icon:'☕', sizes:[{name:'275ml', mg:142, vol:'275ml'}] },
+  { id:49, name:'일동 후디스 RTD',   brand:'convenience', brandLabel:'편의점',     icon:'🔵', sizes:[{name:'200ml', mg:60,  vol:'200ml'}] },
+  { id:74, name:'조지아 크래프트',   brand:'convenience', brandLabel:'편의점',     icon:'🟤', sizes:[{name:'470ml', mg:175, vol:'470ml'}] },
+  { id:75, name:'바리스타룰스 콜드브루', brand:'convenience', brandLabel:'편의점', icon:'🧊', sizes:[{name:'375ml', mg:230, vol:'375ml'}] },
+  { id:76, name:'토레타 디카페인커피', brand:'convenience', brandLabel:'편의점',  icon:'⬜', sizes:[{name:'275ml', mg:5,  vol:'275ml'}] },
+  { id:77, name:'네스카페 수프리모', brand:'convenience', brandLabel:'편의점',     icon:'🟠', sizes:[{name:'180ml', mg:74,  vol:'180ml'}] },
+  { id:78, name:'아침에 누룽지 헛개차',brand:'convenience', brandLabel:'편의점',   icon:'🌾', sizes:[{name:'340ml', mg:0,  vol:'340ml'}] },
+  { id:79, name:'타이거 에스프레소', brand:'convenience', brandLabel:'편의점',     icon:'🐯', sizes:[{name:'200ml', mg:100, vol:'200ml'}] },
+
+  // ── 차/기타 ──
+  { id:50, name:'녹차(티백)',        brand:'tea',         brandLabel:'차/기타',    icon:'🍵', sizes:[{name:'1잔(200ml)', mg:30, vol:'200ml'}] },
+  { id:51, name:'홍차(티백)',        brand:'tea',         brandLabel:'차/기타',    icon:'🫖', sizes:[{name:'1잔(200ml)', mg:50, vol:'200ml'}] },
+  { id:52, name:'말차 파우더',       brand:'tea',         brandLabel:'차/기타',    icon:'🍃', sizes:[{name:'1잔(200ml)', mg:70, vol:'200ml'}] },
+  { id:53, name:'콜라(캔)',          brand:'tea',         brandLabel:'차/기타',    icon:'🥤', sizes:[{name:'250ml', mg:25, vol:'250ml'},{name:'355ml', mg:34, vol:'355ml'}] },
+  { id:54, name:'제로콜라(캔)',      brand:'tea',         brandLabel:'차/기타',    icon:'⬛', sizes:[{name:'250ml', mg:25, vol:'250ml'},{name:'355ml', mg:34, vol:'355ml'}] },
+  { id:55, name:'다크초콜릿(1개)',   brand:'tea',         brandLabel:'차/기타',    icon:'🍫', sizes:[{name:'30g', mg:20, vol:'30g'}] },
+  { id:80, name:'얼그레이 티',       brand:'tea',         brandLabel:'차/기타',    icon:'🫖', sizes:[{name:'1잔(200ml)', mg:40, vol:'200ml'}] },
+  { id:81, name:'우롱차',            brand:'tea',         brandLabel:'차/기타',    icon:'🍃', sizes:[{name:'1잔(200ml)', mg:30, vol:'200ml'}] },
+  { id:82, name:'코코아(핫초코)',    brand:'tea',         brandLabel:'차/기타',    icon:'🍫', sizes:[{name:'1잔(200ml)', mg:5,  vol:'200ml'}] },
+  { id:83, name:'커피아이스크림',    brand:'tea',         brandLabel:'차/기타',    icon:'🍨', sizes:[{name:'1개', mg:30, vol:'100ml'}] },
+  { id:84, name:'프로틴바(카페인 함유)', brand:'tea',     brandLabel:'차/기타',    icon:'🍫', sizes:[{name:'1개', mg:75, vol:'50g'}] },
+
+  // ── 스타벅스 추가 ──
+  { id:85, name:'바닐라라떼',        brand:'starbucks',   brandLabel:'스타벅스',    icon:'🍦', sizes:[{name:'Tall', mg:75,  vol:'355ml'},{name:'Grande', mg:150, vol:'473ml'},{name:'Venti', mg:150, vol:'591ml'}] },
+  { id:86, name:'화이트모카',        brand:'starbucks',   brandLabel:'스타벅스',    icon:'🤍', sizes:[{name:'Tall', mg:75,  vol:'355ml'},{name:'Grande', mg:150, vol:'473ml'}] },
+  { id:87, name:'자몽허니블랙티',    brand:'starbucks',   brandLabel:'스타벅스',    icon:'🍊', sizes:[{name:'Tall', mg:25,  vol:'355ml'},{name:'Grande', mg:35,  vol:'473ml'}] },
+  { id:88, name:'디카페인 아메리카노', brand:'starbucks', brandLabel:'스타벅스',    icon:'⬜', sizes:[{name:'Tall', mg:8,   vol:'355ml'},{name:'Grande', mg:12,  vol:'473ml'}] },
+  { id:89, name:'더블샷 케이크',     brand:'starbucks',   brandLabel:'스타벅스',    icon:'🍰', sizes:[{name:'1개', mg:150, vol:'90ml'}] },
+
+  // ── 메가커피 추가 ──
+  { id:90, name:'생크림 라떼',       brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍦', sizes:[{name:'기본(M)', mg:185, vol:'680ml'},{name:'메가(XL)', mg:370, vol:'1L'}] },
+  { id:91, name:'자몽에이드',        brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍊', sizes:[{name:'기본(M)', mg:0,   vol:'680ml'},{name:'메가(XL)', mg:0,   vol:'1L'}] },
+  { id:92, name:'초코라떼',          brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍫', sizes:[{name:'기본(M)', mg:185, vol:'680ml'}] },
+  { id:93, name:'토피넛라떼',        brand:'megacoffee',  brandLabel:'메가커피',    icon:'🌰', sizes:[{name:'기본(M)', mg:185, vol:'680ml'},{name:'메가(XL)', mg:370, vol:'1L'}] },
+  { id:94, name:'카페모카',          brand:'megacoffee',  brandLabel:'메가커피',    icon:'🍫', sizes:[{name:'기본(M)', mg:185, vol:'680ml'},{name:'메가(XL)', mg:370, vol:'1L'}] },
+  { id:95, name:'디카페인 아메리카노', brand:'megacoffee', brandLabel:'메가커피',    icon:'⬜', sizes:[{name:'기본(M)', mg:10,  vol:'680ml'}] },
+
+  // ── 컴포즈 추가 ──
+  { id:96, name:'바닐라라떼',        brand:'compose',     brandLabel:'컴포즈',      icon:'🍦', sizes:[{name:'기본(L)', mg:175, vol:'591ml'}] },
+  { id:97, name:'카라멜마끼아또',    brand:'compose',     brandLabel:'컴포즈',      icon:'🍮', sizes:[{name:'기본(L)', mg:175, vol:'591ml'}] },
+  { id:98, name:'토피넛라떼',        brand:'compose',     brandLabel:'컴포즈',      icon:'🌰', sizes:[{name:'기본(L)', mg:175, vol:'591ml'}] },
+  { id:99, name:'복숭아 아이스티',   brand:'compose',     brandLabel:'컴포즈',      icon:'🍑', sizes:[{name:'기본(L)', mg:0,   vol:'591ml'}] },
+
+  // ── 빽다방 추가 ──
+  { id:100, name:'바닐라라떼',       brand:'paik',        brandLabel:'빽다방',      icon:'🍦', sizes:[{name:'기본', mg:150, vol:'480ml'}] },
+  { id:101, name:'쿠키엔크림',       brand:'paik',        brandLabel:'빽다방',      icon:'🍪', sizes:[{name:'기본', mg:80,  vol:'480ml'}] },
+  { id:102, name:'고구마라떼',       brand:'paik',        brandLabel:'빽다방',      icon:'🍠', sizes:[{name:'기본', mg:0,   vol:'480ml'}] },
+
+  // ── 이디야 추가 ──
+  { id:103, name:'바닐라라떼',       brand:'ediya',       brandLabel:'이디야',      icon:'🍦', sizes:[{name:'기본(L)', mg:150, vol:'591ml'}] },
+  { id:104, name:'헤이즐넛라떼',     brand:'ediya',       brandLabel:'이디야',      icon:'🌰', sizes:[{name:'기본(L)', mg:150, vol:'591ml'}] },
+  { id:105, name:'디카페인 아메리카노', brand:'ediya',     brandLabel:'이디야',      icon:'⬜', sizes:[{name:'기본(L)', mg:10,  vol:'591ml'}] },
+
+  // ── 투썸플레이스 추가 ──
+  { id:106, name:'바닐라빈라떼',     brand:'twosome',     brandLabel:'투썸',        icon:'🍦', sizes:[{name:'R', mg:100, vol:'355ml'},{name:'L', mg:165, vol:'473ml'}] },
+  { id:107, name:'카페모카',         brand:'twosome',     brandLabel:'투썸',        icon:'🍫', sizes:[{name:'R', mg:100, vol:'355ml'},{name:'L', mg:165, vol:'473ml'}] },
+
+  // ── 할리스 추가 ──
+  { id:108, name:'바닐라라떼',       brand:'hollys',      brandLabel:'할리스',      icon:'🍦', sizes:[{name:'R', mg:75,  vol:'355ml'},{name:'L', mg:125, vol:'473ml'}] },
+
+  // ── 에너지드링크 추가 ──
+  { id:109, name:'몬스터 어쌀트',    brand:'energy',      brandLabel:'에너지드링크',icon:'⚙️', sizes:[{name:'355ml', mg:160, vol:'355ml'}] },
+  { id:110, name:'몬스터 화이트 망고', brand:'energy',     brandLabel:'에너지드링크',icon:'🥭', sizes:[{name:'355ml', mg:150, vol:'355ml'}] },
+  { id:111, name:'핫식스 더 에너지', brand:'energy',      brandLabel:'에너지드링크',icon:'🔋', sizes:[{name:'250ml', mg:80,  vol:'250ml'}] },
+  { id:112, name:'레드불 슈가프리',  brand:'energy',      brandLabel:'에너지드링크',icon:'🐂', sizes:[{name:'250ml', mg:80,  vol:'250ml'}] },
+
+  // ── 편의점 추가 (학생 필수템) ──
+  { id:113, name:'GS25 유어스 카페라떼', brand:'convenience', brandLabel:'편의점', icon:'🥛', sizes:[{name:'275ml', mg:74, vol:'275ml'}] },
+  { id:114, name:'CU 헤이루 아메리카노', brand:'convenience', brandLabel:'편의점', icon:'☕', sizes:[{name:'275ml', mg:75, vol:'275ml'}] },
+  { id:115, name:'세븐일레븐 세븐셀렉트 콜드브루', brand:'convenience', brandLabel:'편의점', icon:'🧊', sizes:[{name:'320ml', mg:180, vol:'320ml'}] },
+  { id:116, name:'스타벅스 더블샷',  brand:'convenience', brandLabel:'편의점',     icon:'⭐', sizes:[{name:'200ml', mg:170, vol:'200ml'}] },
+  { id:117, name:'바나나맛우유(카페인 X)', brand:'convenience', brandLabel:'편의점', icon:'🍌', sizes:[{name:'240ml', mg:0,  vol:'240ml'}] },
+  { id:118, name:'몬스터 에너지(편의점 PB 듀얼)', brand:'convenience', brandLabel:'편의점', icon:'👾', sizes:[{name:'355ml', mg:160, vol:'355ml'}] },
+  { id:119, name:'덴마크 초콜릿우유(카페인 X)', brand:'convenience', brandLabel:'편의점', icon:'🍫', sizes:[{name:'220ml', mg:0, vol:'220ml'}] },
+  { id:120, name:'커피우유(저지방)', brand:'convenience', brandLabel:'편의점',     icon:'🥛', sizes:[{name:'200ml', mg:30, vol:'200ml'}] },
+
+  // ── 차/기타 추가 ──
+  { id:121, name:'에이드(레몬)',     brand:'tea',         brandLabel:'차/기타',    icon:'🍋', sizes:[{name:'1잔(355ml)', mg:0,  vol:'355ml'}] },
+  { id:122, name:'스무디(딸기)',     brand:'tea',         brandLabel:'차/기타',    icon:'🍓', sizes:[{name:'1잔(355ml)', mg:0,  vol:'355ml'}] },
+  { id:123, name:'아이스티(복숭아)', brand:'tea',         brandLabel:'차/기타',    icon:'🍑', sizes:[{name:'1잔(355ml)', mg:0,  vol:'355ml'}] },
+  { id:124, name:'캔커피라떼(매일)', brand:'tea',         brandLabel:'차/기타',    icon:'🥛', sizes:[{name:'190ml', mg:50, vol:'190ml'}] },
+];
+
+const ECO_TIPS = [
+  { id:'tip1', title: '지압 & 손 스트레칭', icon: '🤲', desc: '합곡혈(엄지-검지 사이) 30초 지압. 혈액순환을 즉각 높여 졸음을 줄여줘요.', defaultTime: 30, tags: ['즉효', '조용히 OK'], tagClass: ['green','green'], places: ['classroom','library','cafe','home'], times: ['30min','1hour','long'] },
+  { id:'tip2', title: '15분 파워냅 (토막잠)', icon: '😴', desc: 'NASA 연구: 15~20분 토막잠은 뇌를 각성시키고 수면 관성을 방지합니다.', defaultTime: 900, tags: ['집에서', '검증됨'], tagClass: ['amber','green'], places: ['home'], times: ['long'] },
+  { id:'tip3', title: '4-7-8 산소 호흡 루틴', icon: '🌬️', desc: '4초 흡입, 7초 유지, 8초 배출. 3세트 진행하여 뇌 혈류 산소 밀도를 강제 확장합니다.', defaultTime: 60, tags: ['자리에서', '산소공급'], tagClass: ['green','blue'], places: ['classroom','library','cafe','home'], times: ['30min','1hour','long'] },
+  { id:'tip4', title: '냉수 세안 & 손목 냉자극', icon: '💧', desc: '차가운 물로 세안하거나 손목 안쪽에 흐르는 물을 30초간 대면 교감신경이 즉시 활성화됩니다.', defaultTime: 30, tags: ['즉효', '화장실 이동'], tagClass: ['green','amber'], places: ['classroom','library','cafe','home'], times: ['30min','1hour'] },
+  { id:'tip5', title: '눈 운동 & 원거리 포커싱', icon: '👀', desc: '20초간 먼 곳을 바라본 뒤 가까운 곳을 보는 동작을 5회 반복. 눈의 피로를 풀고 뇌를 재각성시킵니다.', defaultTime: 60, tags: ['조용히 OK', '눈 피로 해소'], tagClass: ['green','blue'], places: ['classroom','library'], times: ['30min','1hour'] },
+  { id:'tip6', title: '목·어깨 스트레칭', icon: '🙆', desc: '목을 좌우로 천천히 돌리고 어깨를 10회 돌려줍니다. 굳은 자세로 인한 혈액순환 저하를 풀어줍니다.', defaultTime: 45, tags: ['자리에서', '즉효'], tagClass: ['green','green'], places: ['classroom','library','cafe'], times: ['30min','1hour'] },
+  { id:'tip7', title: '계단 오르기 5분', icon: '🪜', desc: '건물 계단을 5분간 오르내리면 심박수가 올라가며 아드레날린이 분비되어 즉각적인 각성 효과를 줍니다.', defaultTime: 300, tags: ['이동 필요', '효과 큼'], tagClass: ['amber','green'], places: ['library','cafe','home'], times: ['1hour','long'] },
+  { id:'tip8', title: '찬물 샤워 (3분)', icon: '🚿', desc: '찬물 샤워는 체온을 급격히 변화시켜 교감신경을 강하게 활성화합니다. 장시간 집중이 필요할 때 효과적입니다.', defaultTime: 180, tags: ['집에서', '강력 각성'], tagClass: ['amber','green'], places: ['home'], times: ['1hour','long'] },
+  { id:'tip9', title: '민트/박하 향 흡입', icon: '🌿', desc: '민트 캔디를 씹거나 박하 오일 향을 맡으면 후각 수용체가 자극되어 뇌가 빠르게 깨어납니다.', defaultTime: 30, tags: ['즉효', '조용히 OK'], tagClass: ['green','green'], places: ['classroom','library','cafe'], times: ['30min','1hour','long'] },
+  { id:'tip10', title: '가벼운 산책 (10분)', icon: '🚶', desc: '카페나 건물 밖을 10분간 걸으면 신선한 공기와 가벼운 운동이 결합되어 뇌 혈류가 개선됩니다.', defaultTime: 600, tags: ['이동 필요', '효과 지속'], tagClass: ['amber','blue'], places: ['cafe','home'], times: ['1hour','long'] },
+  { id:'tip11', title: '미니 식사 & 수분 보충', icon: '🍎', desc: '가벼운 간식(사과, 견과류)과 물 한 잔은 혈당을 안정시켜 카페인 없이도 꾸준한 집중력을 유지하게 해줍니다.', defaultTime: 300, tags: ['장기 집중 준비', '혈당 안정'], tagClass: ['blue','green'], places: ['library','cafe','home'], times: ['long'] },
+  { id:'tip12', title: '리듬감 있는 음악 듣기', icon: '🎵', desc: '템포가 빠른 음악을 1곡(약 3분) 들으면 도파민이 분비되며 기분과 각성 수준이 함께 올라갑니다.', defaultTime: 180, tags: ['이어폰 필요', '기분 전환'], tagClass: ['blue','green'], places: ['classroom','library','cafe','home'], times: ['30min','1hour','long'] }
+];
+
+// ============ STATE MANAGEMENT ============
+let state = {
+  todayStr: new Date().toLocaleDateString('ko-KR'),
+  totalMg: 0,
+  limitMg: 400,
+  log: [],
+  history: {}, 
+  profile: { weight: 65, sensitivity: 'mid' },
+  sleepTime: '23:00',
+  filter: { place: null, time: null },
+  currentBrand: 'all'
+};
+
+let activeDrinkForSize = null;
+let activeTimers = {};
+
+// Helper: Get Current HH:MM String
+function getHHMM(dateObj) {
+  const d = dateObj || new Date();
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
+// Helper: Get Current YYYY-MM-DD String
+function getYMD(dateObj) {
+  const d = dateObj || new Date();
+  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+}
+
+// ============ DATETIME PICKER COMPONENT ============
+// Renders a date + hour/min + AM/PM picker into a container.
+// Returns an API object: { getValue(), setToNow(), validate() }
+const dtPickers = {};
+
+function buildDateTimePicker(containerId, errorId) {
+  const container = document.getElementById(containerId);
+  const todayYMD = getYMD();
+  const minDateObj = new Date();
+  minDateObj.setDate(minDateObj.getDate() - 30);
+  const minYMD = getYMD(minDateObj);
+
+  container.innerHTML = `
+    <div class="dt-row">
+      <input type="date" class="dt-date-input" id="${containerId}-date" min="${minYMD}" max="${todayYMD}">
+      <button type="button" class="dt-now-btn" id="${containerId}-now">지금</button>
+    </div>
+    <div class="dt-row">
+      <div class="dt-time-row">
+        <select class="dt-select" id="${containerId}-hour"></select>
+        <span class="dt-colon">:</span>
+        <select class="dt-select" id="${containerId}-min"></select>
+      </div>
+      <div class="dt-ampm-toggle">
+        <button type="button" class="dt-ampm-btn" data-ampm="AM" id="${containerId}-am">오전</button>
+        <button type="button" class="dt-ampm-btn" data-ampm="PM" id="${containerId}-pm">오후</button>
+      </div>
+    </div>
+  `;
+
+  const hourSel = document.getElementById(`${containerId}-hour`);
+  const minSel = document.getElementById(`${containerId}-min`);
+  for (let h = 1; h <= 12; h++) hourSel.innerHTML += `<option value="${h}">${h}시</option>`;
+  for (let m = 0; m < 60; m += 1) minSel.innerHTML += `<option value="${m}">${m.toString().padStart(2,'0')}분</option>`;
+
+  const dateInput = document.getElementById(`${containerId}-date`);
+  const amBtn = document.getElementById(`${containerId}-am`);
+  const pmBtn = document.getElementById(`${containerId}-pm`);
+  const nowBtn = document.getElementById(`${containerId}-now`);
+  const errorEl = errorId ? document.getElementById(errorId) : null;
+
+  function setAmPm(period) {
+    amBtn.classList.toggle('active', period === 'AM');
+    pmBtn.classList.toggle('active', period === 'PM');
+  }
+
+  function applyNow() {
+    const now = new Date();
+    dateInput.value = getYMD(now);
+    let h24 = now.getHours();
+    const period = h24 >= 12 ? 'PM' : 'AM';
+    let h12 = h24 % 12; if (h12 === 0) h12 = 12;
+    hourSel.value = String(h12);
+    minSel.value = String(now.getMinutes());
+    setAmPm(period);
+    clampToNowIfToday();
+    hideError();
+  }
+
+  function hideError() { if (errorEl) errorEl.classList.remove('show'); }
+  function showError() { if (errorEl) errorEl.classList.add('show'); }
+
+  // If selected date is today, prevent any time later than "now".
+  function clampToNowIfToday() {
+    if (dateInput.value !== getYMD()) { hideError(); return true; }
+    const now = new Date();
+    const candidate = readAsDate();
+    if (candidate && candidate > now) {
+      // snap back to current time
+      let h24 = now.getHours();
+      const period = h24 >= 12 ? 'PM' : 'AM';
+      let h12 = h24 % 12; if (h12 === 0) h12 = 12;
+      hourSel.value = String(h12);
+      minSel.value = String(now.getMinutes());
+      setAmPm(period);
+      showError();
+      setTimeout(hideError, 2500);
+      return false;
+    }
+    hideError();
+    return true;
+  }
+
+  function readAsDate() {
+    if (!dateInput.value) return null;
+    const period = pmBtn.classList.contains('active') ? 'PM' : 'AM';
+    let h = parseInt(hourSel.value, 10);
+    if (period === 'PM' && h !== 12) h += 12;
+    if (period === 'AM' && h === 12) h = 0;
+    const [y, mo, d] = dateInput.value.split('-').map(Number);
+    return new Date(y, mo - 1, d, h, parseInt(minSel.value, 10), 0, 0);
+  }
+
+  amBtn.addEventListener('click', () => { setAmPm('AM'); clampToNowIfToday(); });
+  pmBtn.addEventListener('click', () => { setAmPm('PM'); clampToNowIfToday(); });
+  hourSel.addEventListener('change', clampToNowIfToday);
+  minSel.addEventListener('change', clampToNowIfToday);
+  dateInput.addEventListener('change', () => {
+    if (!dateInput.value || dateInput.value > todayYMD) dateInput.value = todayYMD;
+    else if (dateInput.value < minYMD) dateInput.value = minYMD;
+    clampToNowIfToday();
+  });
+  dateInput.addEventListener('input', () => {
+    // Some browsers fire 'input' while typing each date segment; re-validate once a full date is present.
+    if (dateInput.value && dateInput.value.length === 10) {
+      if (dateInput.value > todayYMD) dateInput.value = todayYMD;
+      else if (dateInput.value < minYMD) dateInput.value = minYMD;
+      clampToNowIfToday();
+    }
+  });
+  nowBtn.addEventListener('click', applyNow);
+
+  applyNow();
+
+  const api = {
+    // Returns { date: 'YYYY-MM-DD', time: 'HH:MM' (24h) }
+    getValue() {
+      // Final safety clamp regardless of how the date field was set
+      if (!dateInput.value || dateInput.value > todayYMD) dateInput.value = todayYMD;
+      else if (dateInput.value < minYMD) dateInput.value = minYMD;
+      clampToNowIfToday();
+      const dateObj = readAsDate();
+      if (!dateObj) return { date: getYMD(), time: getHHMM() };
+      return { date: getYMD(dateObj), time: getHHMM(dateObj) };
+    },
+    setToNow: applyNow
+  };
+  dtPickers[containerId] = api;
+  return api;
+}
+
+// ============ INITIALIZER ============
+function init() {
+  const saved = localStorage.getItem('caffeState_v2.2');
+  if (saved) {
+    try { state = { ...state, ...JSON.parse(saved) }; } catch(e) {}
+  }
+  
+  const currentToday = new Date().toLocaleDateString('ko-KR');
+  if (state.todayStr !== currentToday) {
+    state.history[state.todayStr] = (state.history[state.todayStr] || 0) + state.totalMg;
+    state.totalMg = 0;
+    state.log = [];
+    state.todayStr = currentToday;
+    save();
+  }
+
+  document.getElementById('sched-sleep-time').value = state.sleepTime;
+  buildDateTimePicker('custom-dt-picker', 'custom-dt-error');
+  updateDate();
+  renderDrinks('all');
+  updateDashboard();
+  
+  // Real-time Decay Loop Refresh
+  setInterval(() => {
+    if(state.log.length > 0) { updateDashboard(); }
+  }, 30000);
+}
+
+function save() { localStorage.setItem('caffeState_v2.2', JSON.stringify(state)); }
+
+function updateDate() {
+  const now = new Date();
+  document.getElementById('d-date').textContent = now.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+}
+
+function showTab(id, event) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(event) event.target.classList.add('active');
+  
+  if (id === 'insight') { renderWeeklyChart(); renderTopBrands(); }
+  if (id === 'tracker' && dtPickers['custom-dt-picker']) { dtPickers['custom-dt-picker'].setToNow(); }
+}
+
+// ============ BACKWARD SCHEDULING INTERFACE ============
+function updateScheduler() {
+  state.sleepTime = document.getElementById('sched-sleep-time').value;
+  save();
+  
+  const msgEl = document.getElementById('sched-msg');
+  const realTimeLoad = calculateCurrentRemainingCaffeine();
+
+  if (realTimeLoad === 0) {
+    msgEl.innerHTML = `현재 체내 잔류 카페인이 없어 대사 부하가 제로입니다. <strong>${state.sleepTime}</strong>에 바로 숙면이 가능합니다.`;
+    return;
+  }
+
+  const now = new Date();
+  const [targetH, targetM] = state.sleepTime.split(':').map(Number);
+  const targetTime = new Date();
+  targetTime.setHours(targetH, targetM, 0, 0);
+  
+  if (targetTime < now) targetTime.setDate(targetTime.getDate() + 1);
+
+  const threshold = 50; 
+  if (realTimeLoad <= threshold) {
+    msgEl.innerHTML = `현재 체내 잔류량이 <strong>${realTimeLoad}mg</strong>으로 숙면 기준치(${threshold}mg) 이하입니다. 계획대로 취침 가능합니다.`;
+    return;
+  }
+
+  const hoursNeeded = 5.5 * Math.log2(realTimeLoad / threshold);
+  const clearanceTime = new Date(now.getTime() + hoursNeeded * 60 * 60 * 1000);
+  
+  const formattedClearance = clearanceTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const timeDiffToTarget = (targetTime - now) / (1000 * 60 * 60);
+
+  if (hoursNeeded <= timeDiffToTarget) {
+    const margin = (timeDiffToTarget - hoursNeeded).toFixed(1);
+    msgEl.innerHTML = `🏁 대사 분석 완료: 안전 숙면 예상 시간은 <strong>${formattedClearance}</strong>입니다. 취침 전까지 약 <strong>${margin}시간</strong>의 마진이 존재합니다.`;
+  } else {
+    const delay = (hoursNeeded - timeDiffToTarget).toFixed(1);
+    msgEl.innerHTML = `<em>⚠️ 스케줄 충돌:</em> 완전 대사까지 약 <strong>${hoursNeeded.toFixed(1)}시간</strong>이 더 소요되어, <strong>${formattedClearance}</strong> 이후에 숙면이 가능합니다. 목표 취침이 <em>${delay}시간 지연</em>될 수 있습니다.`;
+  }
+}
+
+// ============ EXPONENTIAL CAFFEINE DECAY CALCULATOR ============
+function calculateCurrentRemainingCaffeine() {
+  if (state.log.length === 0) return 0;
+  let remaining = 0;
+  const now = new Date();
+
+  state.log.forEach(item => {
+    const logTime = new Date();
+    let [h, m] = item.time.split(':').map(Number);
+    
+    logTime.setHours(h, m, 0, 0);
+    if(logTime > now) {
+      logTime.setDate(logTime.getDate() - 1);
+    }
+
+    const elapsedHours = (now - logTime) / (1000 * 60 * 60);
+    if (elapsedHours >= 0) {
+      remaining += item.mg * Math.pow(0.5, elapsedHours / 5.5);
+    } else {
+      remaining += item.mg;
+    }
+  });
+
+  return Math.round(remaining);
+}
+
+// ============ DASHBOARD RENDER PIPE ============
+function updateDashboard() {
+  const { totalMg, limitMg, log } = state;
+  const pct = Math.min((totalMg / limitMg) * 100, 100);
+  const remain = Math.max(limitMg - totalMg, 0);
+
+  const cur = document.getElementById('d-current');
+  const bar = document.getElementById('d-bar');
+  const statusMsg = document.getElementById('d-status-msg');
+  const statusWord = document.getElementById('d-status-word');
+
+  cur.textContent = totalMg;
+  bar.style.width = pct + '%';
+  document.getElementById('d-max').textContent = `/ ${limitMg}mg`;
+  document.getElementById('d-limit-badge').textContent = limitMg + 'mg';
+  document.getElementById('d-count').innerHTML = `${log.length} <em>잔</em>`;
+  document.getElementById('d-remain').innerHTML = `${remain} <em>mg</em>`;
+  document.getElementById('d-remain-sub').textContent = `아메리카노 기준 약 ${(remain / 150).toFixed(1)}잔 가용`;
+
+  const realTimeLoad = calculateCurrentRemainingCaffeine();
+  document.getElementById('d-halflife').innerHTML = `${realTimeLoad} <em style="font-size:14px">mg 잔류중</em>`;
+
+  let level = 'safe';
+  if (pct >= 100) level = 'danger';
+  else if (pct >= 75) level = 'warn';
+
+  cur.className = 'gauge-current' + (level !== 'safe' ? ` ${level}` : '');
+  bar.className = 'gauge-bar-fill' + (level !== 'safe' ? ` ${level}` : '');
+  statusMsg.className = 'gauge-status' + (level !== 'safe' ? ` ${level}` : '');
+
+  const statusWordMap = { safe:'안전', warn:'주의', danger:'위험' };
+  statusWord.textContent = statusWordMap[level];
+
+  const msgs = {
+    safe: totalMg === 0 ? `오늘 카페인을 아직 섭취하지 않았어요. <strong>Tracker</strong>에서 음료를 추가해보세요!` : `허용 범위 내 안전 구간입니다. 추가 가용 용량은 <strong>${remain}mg</strong> 입니다.`,
+    warn: `⚠️ 주의 수준 도달: 허용 제한선의 75%를 경과했습니다. 추가 섭취 시 멜라토닌 분비가 억제될 수 있습니다.`,
+    danger: `🚨 안전 한도 초과: 일일 대사 마지노선을 넘었습니다. 추가 유입을 차단하고 <strong>Eco-Wakeup</strong> 행동 제어를 실행하십시오.`
+  };
+  statusMsg.innerHTML = msgs[level];
+
+  const list = document.getElementById('d-log-list');
+  if (log.length === 0) {
+    list.innerHTML = '<li class="log-empty" id="d-log-empty">아직 기록이 없어요 ☕</li>';
+    updateScheduler();
+    return;
+  }
+  
+  // Sorted log list by time asc
+  const sortedLog = [...log].sort((a,b)=> a.time.localeCompare(b.time));
+
+  list.innerHTML = sortedLog.map((item, i) => `
+    <li class="log-item">
+      <span class="log-item-icon">${item.icon}</span>
+      <span class="log-item-name">${item.name}</span>
+      <span class="log-item-size">${item.size}</span>
+      <span class="log-item-mg">+${item.mg}mg</span>
+      <span class="log-item-time">⏱️ ${item.time}</span>
+      <button class="log-item-del" onclick="removeLog(${i})">✕</button>
+    </li>
+  `).join('');
+
+  updateScheduler();
+}
+
+function removeLog(i) {
+  state.totalMg -= state.log[i].mg;
+  state.totalMg = Math.max(0, state.totalMg);
+  state.log.splice(i, 1);
+  save(); updateDashboard();
+}
+
+function clearLog() {
+  if (!confirm('오늘의 모든 로그를 파기하시겠습니까?')) return;
+  state.totalMg = 0; state.log = [];
+  save(); updateDashboard();
+  showToast('🗑️', '오늘의 데이터가 삭제되었습니다.');
+}
+
+// ============ TRACKER CONTROL ============
+function filterBrand(brand, btn) {
+  state.currentBrand = brand;
+  document.querySelectorAll('.brand-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderDrinks(brand);
+}
+
+function renderDrinks(brand) {
+  const list = brand === 'all' ? DRINKS : DRINKS.filter(d => d.brand === brand);
+  const grid = document.getElementById('drink-grid');
+  grid.innerHTML = list.map(d => {
+    const displayMg = d.sizes[0].mg;
+    const isHigh = displayMg >= 250;
+    return `
+      <button class="drink-btn ${isHigh ? 'high-caf' : ''}" onclick="openSizeSelection(${d.id})">
+        <div class="drink-icon">${d.icon}</div>
+        <div class="drink-name">${d.name}</div>
+        <div class="drink-brand">${d.brandLabel}</div>
+        <div class="drink-mg">${displayMg}mg~</div>
+      </button>
+    `;
+  }).join('');
+}
+
+function openSizeSelection(drinkId) {
+  const drink = DRINKS.find(d => d.id === drinkId);
+  if (!drink) return;
+  activeDrinkForSize = drink;
+  
+  document.getElementById('size-m-title').textContent = `${drink.brandLabel} - ${drink.name}`;
+  buildDateTimePicker('modal-dt-picker', 'modal-dt-error');
+  
+  const container = document.getElementById('size-options-container');
+  container.innerHTML = drink.sizes.map(sz => `
+    <button class="size-opt-btn" onclick="executeAddDrinkSize('${sz.name}', ${sz.mg})">
+      <span class="size-opt-title">${sz.name}</span>
+      <span class="size-opt-sub">${sz.vol}</span>
+      <span class="size-opt-mg">${sz.mg} mg</span>
+    </button>
+  `).join('');
+
+  document.getElementById('size-modal').classList.add('open');
+}
+
+// Helper: Convert 'YYYY-MM-DD' to the same locale string format used for state.todayStr / state.history keys
+function ymdToKoLocaleStr(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('ko-KR');
+}
+
+// Records a single intake entry on the correct day (today's live log, or a past day's archived history total).
+function recordIntake(entry, pickedYMD) {
+  const entryDayStr = ymdToKoLocaleStr(pickedYMD);
+  if (entryDayStr === state.todayStr) {
+    state.log.push(entry);
+    state.totalMg += entry.mg;
+    return { isToday: true };
+  } else {
+    // Past-day entry: history only tracks daily totals, not per-item logs
+    state.history[entryDayStr] = (state.history[entryDayStr] || 0) + entry.mg;
+    return { isToday: false, dayLabel: entryDayStr };
+  }
+}
+
+function executeAddDrinkSize(sizeName, targetMg) {
+  if (!activeDrinkForSize) return;
+  
+  const picked = dtPickers['modal-dt-picker'].getValue();
+  
+  const result = recordIntake({
+    name: activeDrinkForSize.name,
+    brand: activeDrinkForSize.brand,
+    mg: targetMg,
+    size: sizeName,
+    icon: activeDrinkForSize.icon,
+    time: picked.time
+  }, picked.date);
+  
+  save(); updateDashboard();
+  closeModal(null, 'size');
+  if (result.isToday) {
+    showToast('☕', `⏱️ ${picked.time}에 마신 ${activeDrinkForSize.name} 등록 완료.`);
+  } else {
+    showToast('📅', `${picked.date} 기록으로 ${activeDrinkForSize.name} 등록 완료.`);
+  }
+}
+
+function addCustom() {
+  const name = document.getElementById('custom-name').value.trim();
+  const mg = parseInt(document.getElementById('custom-mg').value);
+  const picked = dtPickers['custom-dt-picker'].getValue();
+  
+  if (!name || !mg || mg <= 0) { showToast('⚠️', '정확한 이름과 용량을 기입하세요.'); return; }
+  
+  const result = recordIntake({ name, brand: 'custom', mg, size: 'Custom', icon: '🍵', time: picked.time }, picked.date);
+  
+  document.getElementById('custom-name').value = '';
+  document.getElementById('custom-mg').value = '';
+  save(); updateDashboard();
+  if (result.isToday) {
+    showToast('✅', `⏱️ ${picked.time} 커스텀 음료 등록 완료`);
+  } else {
+    showToast('📅', `${picked.date} 기록으로 커스텀 음료 등록 완료`);
+  }
+}
+
+// ============ INTERACTIVE ROUTINE ECO-WAKEUP ============
+function setFilter(type, val, el) {
+  document.querySelectorAll(`.filter-group:${type === 'place' ? 'first-child' : 'last-child'} .filter-opt`).forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  state.filter[type] = val;
+  renderEco();
+}
+
+function renderEco() {
+  const { place, time } = state.filter;
+  if (!place || !time) return;
+
+  const matched = ECO_TIPS.filter(t => t.places.includes(place) && t.times.includes(time));
+  const content = document.getElementById('eco-content');
+  
+  if (matched.length === 0) {
+    content.innerHTML = '<div class="eco-placeholder"><p>선택된 컨텍스트에 매칭되는 행동 강령이 없습니다.</p></div>';
+    return;
+  }
+
+  content.innerHTML = `<div class="eco-cards">${matched.map(t => {
+    const isRunning = activeTimers[t.id] && activeTimers[t.id].intervalId;
+    const btnText = isRunning ? '⏱️ 중지' : '⚡ 루틴 시작';
+    const btnClass = isRunning ? 'btn-eco-timer running' : 'btn-eco-timer';
+    const currentDisplay = activeTimers[t.id] ? formatTimeStr(activeTimers[t.id].remaining) : formatTimeStr(t.defaultTime);
+    
+    return `
+      <div class="eco-card">
+        <div class="eco-card-accent"></div>
+        <div class="eco-card-icon">${t.icon}</div>
+        <div class="eco-card-title">${t.title}</div>
+        <div class="eco-card-desc">${t.desc}</div>
+        
+        <div class="eco-timer-box">
+          <span class="eco-time-display" id="timer-disp-${t.id}">${currentDisplay}</span>
+          <button class="${btnClass}" id="timer-btn-${t.id}" onclick="toggleEcoTimer('${t.id}', ${t.defaultTime})">${btnText}</button>
+        </div>
+
+        <div class="eco-card-tags">
+          ${t.tags.map((tag, i) => `<span class="eco-tag ${t.tagClass[i]}">${tag}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }).join('')}</div>`;
+}
+
+function formatTimeStr(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function toggleEcoTimer(id, defaultSeconds) {
+  if (!activeTimers[id]) {
+    activeTimers[id] = { remaining: defaultSeconds, intervalId: null };
+  }
+
+  const timerData = activeTimers[id];
+  const btn = document.getElementById(`timer-btn-${id}`);
+  const disp = document.getElementById(`timer-disp-${id}`);
+
+  if (timerData.intervalId) {
+    clearInterval(timerData.intervalId);
+    timerData.intervalId = null;
+    btn.textContent = '⚡ 루틴 시작';
+    btn.className = 'btn-eco-timer';
+  } else {
+    btn.textContent = '⏱️ 중지';
+    btn.className = 'btn-eco-timer running';
+    
+    timerData.intervalId = setInterval(() => {
+      timerData.remaining--;
+      disp.textContent = formatTimeStr(timerData.remaining);
+      
+      if (timerData.remaining <= 0) {
+        clearInterval(timerData.intervalId);
+        timerData.intervalId = null;
+        timerData.remaining = defaultSeconds;
+        btn.textContent = '⚡ 루틴 시작';
+        btn.className = 'btn-eco-timer';
+        disp.textContent = formatTimeStr(defaultSeconds);
+        showToast('🎯', '루틴이 완료되었습니다!');
+      }
+    }, 1000);
+  }
+}
+
+// ============ PURE DATA VALIDATION INSIGHT GRAPH ENGINE ============
+function renderWeeklyChart() {
+  const container = document.getElementById('graph-view-container');
+  const labelsRow = document.getElementById('graph-labels-row');
+  
+  const daysArray = [];
+  const today = new Date();
+  for(let i=6; i>=0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    daysArray.push(d.toLocaleDateString('ko-KR'));
+  }
+
+  const values = daysArray.map(dayKey => {
+    if (dayKey === state.todayStr) return state.totalMg;
+    return state.history[dayKey] || 0;
+  });
+
+  const hasData = values.some(val => val > 0);
+
+  if (!hasData) {
+    container.innerHTML = `
+      <div class="eco-placeholder" style="border:none; padding: 20px 0;">
+        <div class="eco-placeholder-icon" style="font-size:28px;">📊</div>
+        <p style="font-size:13px; color:var(--text-muted);">최근 7일간의 축적된 실사용 데이터가 존재하지 않습니다.<br>Tracker에서 오늘 섭취한 음료를 추가하여 대사 기록을 시작해 보세요!</p>
+      </div>
+    `;
+    labelsRow.innerHTML = daysArray.map(dayKey => {
+      const splitStr = dayKey.split('. ');
+      const displayLabel = `${splitStr[1]}/${splitStr[2].replace('.','')}`;
+      return `<span style="width: 14%; text-align: center; color: var(--border); font-family:var(--font-mono); font-size:10px;">${displayLabel}</span>`;
+    }).join('');
+    
+    updateRiskMetrics(0, 0);
+    return;
+  }
+
+  container.innerHTML = `<svg class="graph-svg" id="weekly-graph-svg" viewBox="0 0 700 160" preserveAspectRatio="none"></svg>`;
+  const svg = document.getElementById('weekly-graph-svg');
+
+  const maxVal = Math.max(...values, state.limitMg, 300);
+  const width = 650;
+  const height = 130;
+  const paddingX = 30;
+  const paddingY = 15;
+  
+  const points = values.map((val, idx) => {
+    const x = paddingX + (idx * (width - paddingX * 2) / 6);
+    const y = height - paddingY - (val * (height - paddingY * 2) / maxVal);
+    return { x, y, val };
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const limitY = height - paddingY - (state.limitMg * (height - paddingY * 2) / maxVal);
+  
+  let svgHTML = `
+    <line x1="0" y1="${limitY}" x2="${width}" y2="${limitY}" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.7" />
+    <text x="${width - 100}" y="${limitY - 5}" fill="var(--red)" font-size="9" font-family="var(--font-mono)">LIMIT: ${state.limitMg}mg</text>
+    <path class="graph-line" d="${pathD}" />
+  `;
+  
+  points.forEach(p => {
+    svgHTML += `
+      <circle class="graph-dots" cx="${p.x}" cy="${p.y}" r="4" />
+      <text x="${p.x}" y="${p.y - 10}" fill="var(--text-dim)" font-size="10" font-family="var(--font-mono)" text-anchor="middle">${p.val}mg</text>
+    `;
+  });
+  
+  svg.innerHTML = svgHTML;
+
+  labelsRow.innerHTML = daysArray.map(dayKey => {
+    const splitStr = dayKey.split('. ');
+    const displayLabel = `${splitStr[1]}/${splitStr[2].replace('.','')}`;
+    const isToday = dayKey === state.todayStr;
+    return `<span style="width: 14%; text-align: center; ${isToday ? 'color: var(--neon); font-weight:700;' : ''}">${displayLabel}${isToday?'(오늘)':''}</span>`;
+  }).join('');
+
+  const weeklyAvg = Math.round(values.reduce((a,b)=>a+b, 0) / 7);
+  const consecutiveDays = Object.values(state.history).filter(v => v > 200).length;
+  updateRiskMetrics(weeklyAvg, consecutiveDays);
+}
+
+function updateRiskMetrics(weeklyAvg, consecutiveDays) {
+  const realTimeLoad = calculateCurrentRemainingCaffeine();
+  const sleepRisk = Math.min(Math.round(weeklyAvg / 4.5), 100);
+  document.getElementById('eff-sleep').textContent = `${sleepRisk}%`;
+  document.getElementById('eff-bar-sleep').style.width = `${sleepRisk}%`;
+  
+  const heartRisk = Math.min(Math.round(realTimeLoad / 4), 100);
+  document.getElementById('eff-heart').textContent = `${heartRisk}%`;
+  document.getElementById('eff-bar-heart').style.width = `${heartRisk}%`;
+
+  const dependencyRisk = Math.min(Math.round(consecutiveDays * 14.2), 100);
+  document.getElementById('eff-anxious').textContent = `${dependencyRisk}%`;
+  document.getElementById('eff-bar-anxious').style.width = `${dependencyRisk}%`;
+}
+
+function renderTopBrands() {
+  const brandCounts = {};
+  state.log.forEach(item => {
+    brandCounts[item.brand] = (brandCounts[item.brand] || 0) + 1;
+  });
+  
+  const sorted = Object.entries(brandCounts).sort((a,b) => b[1] - a[1]);
+  const rankList = document.getElementById('insight-top-brands');
+  
+  if (sorted.length === 0) {
+    rankList.innerHTML = '<div class="log-empty" style="font-size:13px; color:var(--text-muted)">오늘 누적된 데이터 기록이 없어<br>선호 카테고리 분석이 비활성화되었습니다.</div>';
+    return;
+  }
+
+  const brandLabels = { starbucks: '스타벅스', megacoffee: '메가커피', compose: '컴포즈', ediya: '이디야', twosome: '투썸플레이스', paik: '빽다방', hollys: '할리스', paulbassett: '폴바셋', energy: '에너지드링크', convenience: '편의점', tea: '차/기타', custom: '직접 입력' };
+  const totalItems = state.log.length;
+
+  rankList.innerHTML = sorted.slice(0, 3).map((item, idx) => {
+    const pct = Math.round((item[1] / totalItems) * 100);
+    return `
+      <div class="rank-item">
+        <div class="rank-num">0${idx+1}</div>
+        <div class="rank-name">${brandLabels[item[0]] || item[0]}</div>
+        <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%;"></div></div>
+        <div class="rank-pct">${pct}%</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============ MODALS CONTROL ============
+function openModal(id) { document.getElementById(`${id}-modal`).classList.add('open'); if(id==='profile') document.getElementById('m-weight').value = state.profile.weight; }
+function closeModal(e, id) { if (!e || e.target === document.getElementById(`${id}-modal`)) { document.getElementById(`${id}-modal`).classList.remove('open'); } }
+
+function saveProfile() {
+  const w = parseInt(document.getElementById('m-weight').value);
+  const s = document.querySelector('[name="sens"]:checked')?.value || 'mid';
+  if (!w || w < 30 || w > 150) { showToast('⚠️', '올바른 체중 범위를 입력하세요.'); return; }
+
+  state.profile = { weight: w, sensitivity: s };
+  const sensMult = { low: 1.0, mid: 0.85, high: 0.65 };
+  state.limitMg = Math.round(w * 5.7 * sensMult[s]);
+
+  save(); updateDashboard();
+  document.getElementById('profile-modal').classList.remove('open');
+  showToast('✅', `신체 한도 최적화 셋업이 완료되었습니다.`);
+}
+
+// ============ TOAST ============
+function showToast(icon, msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// CORE EXECUTION
+init();
+</script>
+</body>
+</html>
